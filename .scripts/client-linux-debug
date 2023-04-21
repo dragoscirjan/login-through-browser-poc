@@ -3,4 +3,4 @@
 SCRIPTPATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 
 token=${1#myapp://none}
-gnome-terminal -- /bin/bash -c "$SCRIPTPATH/client.js --offer-token $token; sleep 5"
+gnome-terminal -- /bin/bash -c "$SCRIPTPATH/../src/client.js --offer-token $token; sleep 5"

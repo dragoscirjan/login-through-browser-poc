@@ -1,3 +1,4 @@
+/* eslint-disable max-lines-per-function */
 const express = require('express');
 const app = express();
 const port = 3000;
@@ -32,7 +33,8 @@ app.get('/login', (req, res) => {
             const password = document.getElementById('password').value;
 
             // Send the username and password to the server for validation
-            const response = await fetch('/validate?username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password));
+            const response = await fetch('/validate?username=' + encodeURIComponent(username) +
+              '&password=' + encodeURIComponent(password));
             const { valid } = await response.json();
 
             if (valid) {

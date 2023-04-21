@@ -1,3 +1,4 @@
+/* eslint-disable max-lines-per-function */
 const {exec} = require('child_process');
 const {existsSync, writeFileSync} = require('fs');
 const {join: pathJoin} = require('path');
@@ -7,17 +8,79 @@ const open = require('open');
 const Winreg = require('winreg');
 
 // Custom protocol
+const appName = 'POC For Browser Login';
 const protocol = 'myapp://';
 const protocolName = protocol.slice(0, -3);
 
+const handler = `${process.argv[0]} ${pathJoin(__dirname, 'client.js --offer-token')}`;
+
+const checkKeyExists = (keyPath) => {
+  return new Promise((resolve, reject) => {
+    const regKey = new Winreg({hive: Winreg.HKCR, key: keyPath});
+    regKey.keyExists((err, exists) => {
+      if (err) {
+        return reject(`Error checking registry key ${keyPath}: ${err.message}`);
+      }
+      return resolve(exists);
+    });
+  });
+};
+
+const createKey = async (keyPath) => {
+  return new Promise((resolve, reject) => {
+    const regKey = new Winreg({hive: Winreg.HKCR, key: keyPath});
+    regKey.create((err) => {
+      if (err) {
+        return reject(`Error creating registry key ${keyPath}: ${err.message}`);
+      }
+      return resolve(`Registry key ${keyPath} created successfully`);
+    });
+  });
+};
+
+const setKeyValue = async (keyPath, name, value) => {
+  return new Promise((resolve, reject) => {
+    const regKey = new Winreg({hive: Winreg.HKCR, key: keyPath});
+    regKey.set(name, Winreg.REG_SZ, value, (err) => {
+      if (err) {
+        return reject(`Error setting value for registry key ${keyPath}: ${err.message}`);
+      }
+      return resolve(`Value for registry key ${keyPath} set successfully`);
+    });
+  });
+};
+
+/**
+ * @link https://css-tricks.com/hyperlinking-beyond-the-web/
+ */
 const installUriHandlerForWin32 = async () => {
-  return; // return `REG ADD HKCR\\${protocol.slice(
-  //   0,
-  //   -2
-  // )}\\shell\\open\\command /ve /d "${handler} %1" /f`;
+  try {
+    const keyExists = await checkKeyExists(`\\${protocolName}`);
+    if (!keyExists) {
+      await createKey(`\\${protocolName}`);
+      await setKeyValue(`\\${protocolName}`, '', appName);
+      await setKeyValue(`\\${protocolName}`, 'URL Protocol', '');
+
+      await createKey(`\\${protocolName}\\shell`);
+      await createKey(`\\${protocolName}\\shell\\open`);
+      await createKey(`\\${protocolName}\\shell\\open\\command`);
+
+      // const scriptPath = pathJoin(__dirname, '..', '.scripts', 'client-windows-debug.ps1');
+      // await setKeyValue(
+      //   `\\${protocolName}\\shell\\open\\command`,
+      //   '',
+      //   `powershell -File ${scriptPath} "${process.argv[0]}" %1`,
+      // );
+      await setKeyValue(`\\${protocolName}\\shell\\open\\command`, '', `${handler} %1`);
+    }
+  } catch (e) {
+    throw new Error(`Error registering custom URI handler: ${e.message}`);
+  }
+  console.log('Custom URI handler registered successfully');
 };
 
 const installUriHandlerForDarwin = async () => {
+  // eslint-disable-next-line max-len
   // return `echo '<?xml version="1.0"?><!DOCTYPE plist PUBLIC "-//Apple/DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>CFBundleURLTypes</key><array><dict><key>CFBundleURLName</key><string>myapp</string><key>CFBundleURLSchemes</key><array><string>myapp</string></array></dict></array></dict></plist>' > ~/Library/Preferences/${protocol.slice(
   //   0,
   //   -2
@@ -34,9 +97,9 @@ const installUriHandlerForLinux = async () => {
 Version=1.0
 Terminal=true
 Type=Application
-Name=MYApp Handler
+Name=${appName}
 #Exec=${pathJoin(__dirname, '..', '.scripts', 'client-debug-linux')} "${process.argv[0]}" %u
-Exec=${process.argv[0]} ${pathJoin(__dirname, 'client.js --offer-token')} %u
+Exec=${handler} %u
 StartupNotify=false
 MimeType=x-scheme-handler/${protocolName};
 NoDisplay=false`,
@@ -56,7 +119,8 @@ NoDisplay=false`,
             if (e) {
               reject(`Error registering custom URI handler: ${error.message}`);
             } else {
-              resolve('Custom URI handler registered successfully');
+              resolve();
+              console.log('Custom URI handler registered successfully');
             }
           });
         }
@@ -67,16 +131,17 @@ NoDisplay=false`,
 
 const installUriHandler = async () => {
   switch (process.platform) {
-  case 'win32':
-    return installUriHandlerForWin32();
-  case 'darwin':
-    return installUriHandlerForDarwin();
-  case 'linux':
-    return installUriHandlerForLinux();
-  default:
-    console.log('Unsupported platform');
-    process.exit(1);
+    case 'win32':
+      return installUriHandlerForWin32();
+    case 'darwin':
+      return installUriHandlerForDarwin();
+    case 'linux':
+      return installUriHandlerForLinux();
+    default:
+      console.log('Unsupported platform');
+      process.exit(1);
   }
+  return null;
 };
 
 const startListener = () => {

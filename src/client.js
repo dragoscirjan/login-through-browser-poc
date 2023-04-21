@@ -87,6 +87,11 @@ const installUriHandlerForDarwin = async () => {
   // )}.plist`;
 };
 
+/**
+ * @link https://unix.stackexchange.com/questions/55214/how-to-override-the-gnome-3-ssh-handler/100736#100736
+ * @link https://unix.stackexchange.com/questions/497146/create-a-custom-url-protocol-handler
+ * @link https://stackoverflow.com/questions/2060284/how-to-use-the-xdg-mime-command
+ */
 const installUriHandlerForLinux = async () => {
   const dp = pathJoin(process.env.HOME, ...'.local/share/applications'.split('/'), `${protocolName}.desktop`);
   if (!existsSync(dp)) {
